@@ -1,3 +1,5 @@
+Live Url : https://solar-industry-ai-assistant-m8sgjvpqfgkhxlqccqrxfc.streamlit.app/
+
 # Solar Industry AI Assistant – Rooftop Analysis Tool ☀️
 
 An AI-powered Streamlit app that analyzes satellite rooftop images to assess solar installation potential. Ideal for homeowners, solar consultants, and professionals in the renewable energy sector.
