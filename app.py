@@ -30,46 +30,64 @@ class SolarAnalyzer:
         self.knowledge_base = SOLAR_KNOWLEDGE
 
     def analyze_image_properties(self, image):
-        img_array = np.array(image)
-        height, width = img_array.shape[:2]
-        if width < 300 or height < 300:
-            return {"error": "Image resolution too low. Please upload a higher quality image."}
-        gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-        if len(faces) > 0:
-            return {"error": "Please upload a rooftop image only."}
-        img_gray = image.convert('L')
-        contrast = np.std(np.array(img_gray))
-        if contrast < 10:
-            return {"error": "Image has low contrast. Please upload a clearer image."}
-        brightness = np.mean(img_array)
-        roof_area_ratio = min(0.8, max(0.3, (brightness / 255) * 0.6 + (contrast / 100) * 0.4))
-        return {
-            "width": width,
-            "height": height,
-            "brightness": brightness,
-            "contrast": contrast,
-            "roof_area_ratio": roof_area_ratio
-        }
+        try:
+            img_array = np.array(image)
+            height, width = img_array.shape[:2]
+
+            if width < 300 or height < 300:
+                return {"error": "Image resolution too low. Please upload a higher quality image."}
+
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+
+            if len(faces) > 0:
+                return {"error": "Please upload a rooftop image only."}
+
+            if image.mode != 'L':
+                img_gray = image.convert('L')
+            else:
+                img_gray = image
+
+            contrast = np.std(np.array(img_gray))
+            if contrast < 10:
+                return {"error": "Image has low contrast. Please upload a clearer image."}
+
+            brightness = np.mean(img_array)
+            roof_area_ratio = min(0.8, max(0.3, (brightness / 255) * 0.6 + (contrast / 100) * 0.4))
+
+            return {
+                "width": width,
+                "height": height,
+                "brightness": brightness,
+                "contrast": contrast,
+                "roof_area_ratio": roof_area_ratio
+            }
+
+        except Exception as e:
+            return {"error": f"Error analyzing image: {str(e)}"}
 
     def calculate_solar_potential(self, props, location_factor=1.0):
         if "error" in props:
             return {"error": props["error"]}
+
         pixel_to_sqft = 0.1
         roof_area = props["width"] * props["height"] * pixel_to_sqft * props["roof_area_ratio"]
         panel_area = 20
         max_panels = int(roof_area * 0.75 / panel_area)
+
         if roof_area > 1000:
             panel_type = "monocrystalline"
         elif roof_area > 500:
             panel_type = "polycrystalline"
         else:
             panel_type = "thin_film"
+
         panel_specs = self.knowledge_base["panel_types"][panel_type]
         watts_per_panel = 300
         total_capacity_kw = (max_panels * watts_per_panel * panel_specs["efficiency"]) / 1000
         annual_kwh = total_capacity_kw * 1500 * location_factor
+
         return {
             "roof_area": round(roof_area),
             "max_panels": max_panels,
@@ -108,13 +126,17 @@ class SolarAnalyzer:
         props = self.analyze_image_properties(image)
         if "error" in props:
             return {"error": props["error"]}
+
         solar_data = self.calculate_solar_potential(props)
         if "error" in solar_data:
             return {"error": solar_data["error"]}
+
         roi = self.calculate_roi_analysis(solar_data)
         confidence = self.generate_confidence_score(props, solar_data)
+
         suitable = solar_data["max_panels"] >= 6 and roi["payback_years"] <= 12 and confidence >= 0.6
         recommendation = self.generate_recommendations(solar_data, roi, suitable)
+
         return {
             "suitable": suitable,
             "confidence": confidence,
@@ -144,40 +166,44 @@ def main():
     uploaded_file = st.file_uploader("📷 Upload a rooftop image", type=["jpg", "jpeg", "png"])
 
     if uploaded_file:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="📍 Uploaded Roof Image", use_container_width=True)
+        try:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="📍 Uploaded Roof Image", use_container_width=True)
 
-        analyzer = SolarAnalyzer()
-        result = analyzer.analyze_rooftop(image)
+            analyzer = SolarAnalyzer()
+            with st.spinner("🔍 Analyzing rooftop suitability..."):
+                result = analyzer.analyze_rooftop(image)
 
-        if "error" in result:
-            st.error(result["error"])
-        else:
-            st.subheader("📊 Suitability Overview")
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Confidence", f"{result['confidence'] * 100:.0f} %")
-            col2.metric("Max Panels", result["solar_data"]["max_panels"])
-            col3.metric("Panel Type", result["solar_data"]["panel_type"].capitalize())
-
-            if result["suitable"]:
-                st.success(result["recommendations"]["recommendation"])
+            if "error" in result:
+                st.error(result["error"])
             else:
-                st.warning(result["recommendations"]["recommendation"])
-            st.caption(result["recommendations"]["message"])
+                st.subheader("📊 Suitability Overview")
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Confidence", f"{result['confidence'] * 100:.0f} %")
+                col2.metric("Max Panels", result["solar_data"]["max_panels"])
+                col3.metric("Panel Type", result["solar_data"]["panel_type"].capitalize())
 
-            with st.expander("🔍 Solar Panel Details"):
-                st.write(f"**Roof Area Estimate:** {result['solar_data']['roof_area']} sq ft")
-                st.write(f"**Total Capacity:** {result['solar_data']['total_capacity_kw']} kW")
-                st.write(f"**Annual Energy Production:** {result['solar_data']['annual_production_kwh']} kWh")
-                st.write(f"**Daily Average:** {result['solar_data']['daily_avg_kwh']} kWh")
+                if result["suitable"]:
+                    st.success(result["recommendations"]["recommendation"])
+                else:
+                    st.warning(result["recommendations"]["recommendation"])
+                st.caption(result["recommendations"]["message"])
 
-            with st.expander("💰 ROI & Savings Analysis"):
-                st.write(f"**System Cost:** ${result['roi_data']['system_cost']}")
-                st.write(f"**Net Cost (after tax credit):** ${result['roi_data']['net_cost']}")
-                st.write(f"**Annual Savings:** ${result['roi_data']['annual_savings']}")
-                st.write(f"**Payback Period:** {result['roi_data']['payback_years']} years")
-                st.write(f"**25-Year Savings:** ${result['roi_data']['total_25yr_savings']}")
-                st.write(f"**ROI:** {result['roi_data']['roi_percentage']} %")
+                with st.expander("🔍 Solar Panel Details"):
+                    st.write(f"**Roof Area Estimate:** {result['solar_data']['roof_area']} sq ft")
+                    st.write(f"**Total Capacity:** {result['solar_data']['total_capacity_kw']} kW")
+                    st.write(f"**Annual Energy Production:** {result['solar_data']['annual_production_kwh']} kWh")
+                    st.write(f"**Daily Average:** {result['solar_data']['daily_avg_kwh']} kWh")
+
+                with st.expander("💰 ROI & Savings Analysis"):
+                    st.write(f"**System Cost:** ${result['roi_data']['system_cost']:,}")
+                    st.write(f"**Net Cost (after 30% tax credit):** ${result['roi_data']['net_cost']:,}")
+                    st.write(f"**Annual Savings:** ${result['roi_data']['annual_savings']:,}")
+                    st.write(f"**Payback Period:** {result['roi_data']['payback_years']} years")
+                    st.write(f"**25-Year Net Savings:** ${result['roi_data']['total_25yr_savings']:,}")
+                    st.write(f"**ROI:** {result['roi_data']['roi_percentage']} %")
+        except Exception as e:
+            st.error(f"Failed to process image. Please upload a valid image. Error: {str(e)}")
 
 
 if __name__ == "__main__":
