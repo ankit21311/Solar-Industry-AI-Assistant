@@ -1,23 +1,31 @@
-# Solar Industry AI Assistant - Rooftop Analysis Tool
+# ☀️ Solar Panel Suitability Analyzer
 
-## Overview
-This tool uses AI to analyze satellite imagery of rooftops and provide an assessment of their solar panel installation potential. The tool will provide:
-- Roof area and dimensions
-- Solar exposure potential (in percentage)
-- Shading effects
-- Recommended number of solar panels
-- ROI (Return on Investment) for the installation
+This Streamlit application helps determine whether a rooftop is suitable for solar panel installation based on an uploaded image. It analyzes the rooftop area, calculates potential solar energy production, estimates cost, ROI, and provides recommendations.
 
-## Setup Instructions
+---
 
-### Prerequisites
-Ensure you have the following installed:
-- Python 3.8+
-- pip (Python's package installer)
+## 🚀 Features
 
-### Installation
-1. Clone this repository or download the project files.
-2. Navigate to the project directory in your terminal.
-3. Install the required Python libraries by running the following command:
-   ```bash
-   pip install -r requirements.txt
+- 🖼️ Image analysis to check resolution, brightness, contrast, and presence of non-roof elements.
+- 📐 Roof area estimation based on image properties.
+- ⚡ Solar potential calculation using knowledge of different panel types.
+- 💰 ROI analysis including system cost, federal tax credit, payback period, and 25-year savings.
+- 📊 Visual report with confidence score and suitability recommendation.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Streamlit**: For the interactive web UI
+- **OpenCV**: For image analysis (face detection, grayscale conversion)
+- **Pillow (PIL)**: For image preprocessing
+- **NumPy**: For numeric operations
+
+---
+
+## 📦 Installation
+
+### 1. Clone the repository
+
+git clone https://github.com/yourusername/solar-analyzer.git
+cd solar-analyzer
