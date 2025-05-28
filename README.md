@@ -29,3 +29,5 @@ This Streamlit application helps determine whether a rooftop is suitable for sol
 
 git clone https://github.com/yourusername/solar-analyzer.git
 cd solar-analyzer
+
+### Demo Video : https://www.loom.com/share/8739a9923b4b4c71886da6bc38c7931a?sid=90aa7230-c608-4d92-8ccb-1b7dbb235545
